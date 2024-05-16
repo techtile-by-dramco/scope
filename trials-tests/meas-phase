@@ -10,9 +10,14 @@ ip = "192.108.0.251"
 rm = visa.ResourceManager()
 scope = rm.open_resource(f'TCPIP::{ip}::INSTR')
 
-res = scope.query("MEASUrement:MEAS2:RESUlts:HISTory:MEAN?")
+meas_nr = 2
 
-print(res)
+while 1:
+    
+  res = scope.query(f"MEASUrement:MEAS{meas_nr}:RESUlts:HISTory:MEAN?")
+  print(res)
+
+  time.sleep(1)
 
 # # scope.timeout = 10000 # ms
 # # scope.encoding = 'latin_1'
