@@ -19,7 +19,7 @@ class Scope:
         power_dBm = scope.get_power_dBm()
     """
 
-    def __init__(self, ip: str, mode: ScopeMode = ScopeMode.POWER, config=None) -> None:
+    def __init__(self, ip: str=None, mode: ScopeMode = ScopeMode.POWER, config=None) -> None:
         if ip is None:
             if config is None or 'ip' not in config:
                 print("Please provide or an IP address or a config with an IP address specified (key = ip)")
