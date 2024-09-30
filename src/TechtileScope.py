@@ -19,9 +19,9 @@ class Scope:
         self.visa_address = f'TCPIP::{ip}::INSTR'
 
         self.span = None
-    
-        #self.setup()
-    
+
+        # self.setup()
+
     def write(self, s:str):
         self.scope.write(s)
 
@@ -33,7 +33,7 @@ class Scope:
         self.span = span
         self.rbw = rbw
 
-        #TODO make this configurable
+        # TODO make this configurable
         rm = visa.ResourceManager()
         self.scope = rm.open_resource(self.visa_address)
         self.scope.timeout = 10000 # ms
@@ -45,51 +45,52 @@ class Scope:
         _ = self.query('*opc?') # sync
 
         # Channel 1 50Ohm 2GHz
-        self.write(f"CH1:TERMINATION 50")
+        self.write("CH1:TERMINATION 50")
         self.write(f"CH1:BANDWIDTH {bandwidth}")
-        
+
         # open spectrum view
         # spectrum view 910MHz and 100kHz BW
-        self.write(f"DISplay:SELect:SPECView1:SOUrce CH1")
-        self.write(f"CH1:SV:STATE ON")
+        self.write("DISplay:SELect:SPECView1:SOUrce CH1")
+        self.write("CH1:SV:STATE ON")
         self.write(f"CH1:SV:CENTERFrequency {center}")
         self.write(f"SV:SPAN {span}")
 
-        self.write(f"SV:RBWMode MANUAL")
-        self.write(f"SV:RBW {self.rbw}")
+        self.write("SV:RBWMode MANUAL")
+        self.write("SV:RBW {self.rbw}")
 
-        self.write(f"SV:CH1:UNIts DBM")
+        self.write("SV:CH1:UNIts DBM")
 
-        self.write(f"DATa:SOUrce CH1_SV_NORMal")
+        self.write("DATa:SOUrce CH1_SV_NORMal")
 
         data_stop = round(self.span/self.rbw*2)
 
-        self.write(f"DATa:START 1")
+        self.write("DATa:START 1")
         self.write(f"DATa:STOP {data_stop}")#1901
 
-        self.write(f"WFMOutpre:BYT_Or LSB")
+        self.write("WFMOutpre:BYT_Or LSB")
 
         _ = self.query('*opc?') # sync
 
-
-    def get_power_dBm(self, cable_loss) -> float:
+    def get_power_dBm(self, cable_loss=None) -> float:
+        if cable_loss is None:
+            cable_loss = 0
+            print("no cabling loss taken into account")
         pwr_dbm = self.scope.query_binary_values("CURVe?", datatype='d', container=np.array)
         pwr_lin = 10 ** (pwr_dbm / 10)
         tot_pwr_dbm = float(10*np.log10(np.sum(pwr_lin))) #float to cast to single element
         return tot_pwr_dbm + cable_loss
 
-
-    def get_power_dBm_peaks(self, cable_loss, search_for_no_peaks) -> float:
+    def get_power_dBm_peaks(self, search_for_no_peaks, cable_loss=None) -> float:
 
         #   Check span adjustments externally
         self.check_span()
 
         #   Get spectrum form scope
         pwr_dbm = self.scope.query_binary_values("CURVe?", datatype='d', container=np.array)
-        
+
         #   Calculate all peaks in spectrum
         peaks,_ = find_peaks(pwr_dbm)
-        #print(pwr_dbm[peaks])
+        # print(pwr_dbm[peaks])
 
         #   Sort peaks in descending order
         peaks_sorted = sorted(pwr_dbm[peaks], reverse=True)
@@ -97,15 +98,17 @@ class Scope:
 
         #   Combine peaks to one overall power value
         power_linear = 10 ** (np.asarray(peaks_sorted[:search_for_no_peaks]) / 10)
-        #print(power_linear)
+        # print(power_linear)
         tot_pwr_dbm = float(10*np.log10(np.sum(power_linear))) #float to cast to single element
+        if cable_loss is None:
+            cable_loss = 0
+            print("no cabling loss taken into account")
         return tot_pwr_dbm + cable_loss, peaks        
 
-
     def check_span(self):
-        new_span = float(self.query(f"SV:SPAN?"))
+        new_span = float(self.query("SV:SPAN?"))
         if new_span != self.span:
-            
+
             #   Warning
             print("Span changed externally!")
 
@@ -114,5 +117,5 @@ class Scope:
 
             data_stop = round(self.span/self.rbw*2)
 
-            self.write(f"DATa:START 1")
+            self.write("DATa:START 1")
             self.write(f"DATa:STOP {data_stop}")#1901
