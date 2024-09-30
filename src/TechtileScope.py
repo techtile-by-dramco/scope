@@ -19,11 +19,15 @@ class Scope:
         power_dBm = scope.get_power_dBm()
     """
 
-    def __init__(self, ip: str=None, mode: ScopeMode = ScopeMode.POWER, config=None) -> None:
+    def __init__(
+        self, ip: str = None, mode: ScopeMode = ScopeMode.POWER, config=None
+    ) -> None:
 
         if ip is None:
-            if config is None or 'ip' not in config:
-                print("Please provide or an IP address or a config with an IP address specified (key = ip)")
+            if config is None or "ip" not in config:
+                print(
+                    "Please provide or an IP address or a config with an IP address specified (key = ip)"
+                )
                 exit()
             else:
                 ip = config["ip"]
@@ -51,7 +55,9 @@ class Scope:
         return self.scope.query(s)
 
     def get_data(self) -> float:
-        return self.scope.query_binary_values("CURVe?", datatype='d', container=np.array)
+        return self.scope.query_binary_values(
+            "CURVe?", datatype="d", container=np.array
+        )
 
     def setup(self, bandwidth, center, span, rbw):
 
@@ -111,13 +117,13 @@ class Scope:
 
         print(self.scope.query("WFMOutpre:NR_Pt?"))
 
-def calc_full_channel_power(self, data) -> float:
-        #pwr_lin = 10 ** (data / 10)
-        #tot_pwr_dbm = float(10*np.log10(np.sum(pwr_lin))) #float to cast to single element
-        #return tot_pwr_dbm + self.cable_loss
+    def calc_full_channel_power(self, data) -> float:
+        # pwr_lin = 10 ** (data / 10)
+        # tot_pwr_dbm = float(10*np.log10(np.sum(pwr_lin))) #float to cast to single element
+        # return tot_pwr_dbm + self.cable_loss
 
         # Convert dBm to Watts
-        power_samples_W = 10**(data / 10) * 1e-3  # Convert dBm to Watts
+        power_samples_W = 10 ** (data / 10) * 1e-3  # Convert dBm to Watts
 
         # Integrate power samples over the frequency band (each sample corresponds to the RBW)
         total_power_W = np.sum(power_samples_W)
@@ -128,7 +134,6 @@ def calc_full_channel_power(self, data) -> float:
         return total_power_dBm
 
         # print(f"Total channel power: {total_power_dBm:.2f} dBm")
- 
 
     def calc_channel_power_peaks(self, data, search_for_no_peaks) -> float:
 
@@ -136,11 +141,13 @@ def calc_full_channel_power(self, data) -> float:
         self.check_span()
 
         #   Get spectrum form scope
-        pwr_dbm = self.scope.query_binary_values("CURVe?", datatype='d', container=np.array)
-        
+        pwr_dbm = self.scope.query_binary_values(
+            "CURVe?", datatype="d", container=np.array
+        )
+
         #   Calculate all peaks in spectrum
-        peaks,_ = find_peaks(pwr_dbm)
-        #print(pwr_dbm[peaks])
+        peaks, _ = find_peaks(pwr_dbm)
+        # print(pwr_dbm[peaks])
 
         #   Sort peaks in descending order
         peaks_sorted = sorted(pwr_dbm[peaks], reverse=True)
@@ -148,25 +155,26 @@ def calc_full_channel_power(self, data) -> float:
 
         #   Combine peaks to one overall power value
         power_linear = 10 ** (np.asarray(peaks_sorted[:search_for_no_peaks]) / 10)
-        #print(power_linear)
-        tot_pwr_dbm = float(10*np.log10(np.sum(power_linear))) #float to cast to single element
-        return tot_pwr_dbm, peaks        
-
+        # print(power_linear)
+        tot_pwr_dbm = float(
+            10 * np.log10(np.sum(power_linear))
+        )  # float to cast to single element
+        return tot_pwr_dbm, peaks
 
     def check_span(self):
         new_span = float(self.query(f"SV:SPAN?"))
         if new_span != self.span:
-            
+
             #   Warning
             print("Span changed externally!")
 
             #   Update span value
             self.span = new_span
 
-            data_stop = round(self.span/self.rbw*2)
+            data_stop = round(self.span / self.rbw * 2)
 
             self.write(f"DATa:START 1")
-            self.write(f"DATa:STOP {data_stop}")#1901
+            self.write(f"DATa:STOP {data_stop}")  # 1901
 
     def get_power_dBm(self) -> float:
         pwr_data_dbm = self.get_data()
