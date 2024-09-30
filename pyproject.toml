@@ -21,7 +21,7 @@ classifiers = [
 dependencies = [
   'numpy',
   'scipy',
-  'git @ http://github.com/hgrecco/pyvisa',
+  'git @ https://github.com/hgrecco/pyvisa.git',
   'time'
 ]
 
