@@ -92,6 +92,7 @@ class Scope:
         self.write("WFMOutpre:BYT_Or LSB")
 
         _ = self.query("*opc?")  # sync
+        print(self.query("*IDN?"))
 
     def get_power_dBm(self, cable_loss=None) -> float:
         if cable_loss is None:
