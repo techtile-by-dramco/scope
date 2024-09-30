@@ -3,7 +3,7 @@
 ## Interface
 
 ```python
-from TechtileScope.TechtileScope import Scope
+from TechtileScope import Scope
 
 scope = Scope("192.108.0.251")
 power_dBm = scope.get_power_dBm()
