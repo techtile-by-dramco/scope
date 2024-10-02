@@ -140,7 +140,7 @@ class Scope:
 
         # print(f"Total channel power: {total_power_dBm:.2f} dBm")
 
-    def calc_channel_power_peaks(self, data, search_for_no_peaks) -> float:
+    def calc_channel_power_peaks(self, search_for_no_peaks) -> float:
 
         #   Check span adjustments externally
         self.check_span()
@@ -167,7 +167,7 @@ class Scope:
         return tot_pwr_dbm, peaks
 
     def check_span(self):
-        new_span = float(self.query(f"SV:SPAN?"))
+        new_span = float(self.query("SV:SPAN?"))
         if new_span != self.span:
 
             #   Warning
@@ -178,12 +178,12 @@ class Scope:
 
             data_stop = round(self.span / self.rbw * 2)
 
-            self.write(f"DATa:START 1")
+            self.write("DATa:START 1")
             self.write(f"DATa:STOP {data_stop}")  # 1901
 
     def get_power_dBm(self) -> float:
-        pwr_data_dbm = self.get_data()
-        tot_pwr_dbm, peaks = self.calc_channel_power_peaks(pwr_data_dbm, 1)
+        # pwr_data_dbm = self.get_data()
+        tot_pwr_dbm, _ = self.calc_channel_power_peaks(1)
         return tot_pwr_dbm
 
     def get_power_dBm_peaks(self, search_for_no_peaks, cable_loss=None) -> float:
@@ -215,17 +215,3 @@ class Scope:
             print("no cabling loss taken into account")
         return tot_pwr_dbm + cable_loss, peaks
 
-    def check_span(self):
-        new_span = float(self.query("SV:SPAN?"))
-        if new_span != self.span:
-
-            #   Warning
-            print("Span changed externally!")
-
-            #   Update span value
-            self.span = new_span
-
-            data_stop = round(self.span / self.rbw * 2)
-
-            self.write("DATa:START 1")
-            self.write(f"DATa:STOP {data_stop}")  # 1901
