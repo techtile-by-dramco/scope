@@ -37,12 +37,7 @@ class Scope:
 
         if config:
             print(f"Setting with following config: {config}")
-            self.setup(
-                bandwidth=config["bandwidth_hz"],
-                center=config["center_hz"],
-                span=config["span_hz"],
-                rbw=config["rbw_hz"],
-            )
+            self.setup(config)
         else:
             print(
                 "No configuration provided, please use the setup method to ocnfigure the scope."
@@ -59,7 +54,14 @@ class Scope:
             "CURVe?", datatype="d", container=np.array
         )
 
-    def setup(self, bandwidth, center, span, rbw):
+    def setup(self, config):
+
+        bandwidth=config["bandwidth_hz"]
+        center=config["center_hz"]
+        span=config["span_hz"]
+        rbw=config["rbw_hz"]
+        termination:int = config["termination"]
+        spectrum_view: bool = config["spectrum_view"]
 
         self.span = span
         self.rbw = rbw
@@ -77,25 +79,28 @@ class Scope:
         self.scope.query("*idn?")
 
         # Channel 1 50Ohm 2GHz
-        self.scope.write("CH1:TERMINATION 50")
+        self.scope.write(f"CH1:TERMINATION {termination}")
         self.scope.write(f"CH1:BANDWIDTH {bandwidth}")
+
+        # TODO check if all settings are stored correctly
 
         self.scope.query(":CH1:TERMINATION?")
         self.scope.query(":CH1:BANdwidth?")
 
         # Open spectrum view
         # spectrum view 910MHz and 100kHz BW
-        self.scope.write("DISplay:SELect:SPECView1:SOUrce CH1")
-        self.scope.write("CH1:SV:STATE ON")
-        self.scope.write(f"CH1:SV:CENTERFrequency {center}")
-        self.scope.write(f"SV:SPAN {self.span}")
+        if spectrum_view:
+            self.scope.write("DISplay:SELect:SPECView1:SOUrce CH1")
+            self.scope.write("CH1:SV:STATE ON")
+            self.scope.write(f"CH1:SV:CENTERFrequency {center}")
+            self.scope.write(f"SV:SPAN {self.span}")
 
-        self.scope.write("SV:RBWMode MANUAL")
-        self.scope.write(f"SV:RBW {self.rbw}")
+            self.scope.write("SV:RBWMode MANUAL")
+            self.scope.write(f"SV:RBW {self.rbw}")
 
-        self.scope.write("SV:CH1:UNIts DBM")
+            self.scope.write("SV:CH1:UNIts DBM")
 
-        self.scope.write("DATa:SOUrce CH1_SV_NORMal")
+            self.scope.write("DATa:SOUrce CH1_SV_NORMal")
 
         self.scope.query("DATa:SOUrce?")
 
