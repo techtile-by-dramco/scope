@@ -27,7 +27,8 @@ from scope import Scope
 # #   ENERGY PROFILER SYSTEM SETTINGS --> ToDo Check if it is definied in config file
 # scope_yaml = config.get('scope', {})
 
-ip = "10.128.51.254"
+ip = "192.108.1.219"
+# ip = "10.128.51.253"
 bw = 2e9
 center = 920e6
 span = 100e3

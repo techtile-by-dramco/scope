@@ -135,7 +135,7 @@ class Scope:
 
         # print(self.scope.query("MEASUREMENT:MEAS1:RESUlts?"))
 
-        print(self.scope.query("MEASUrement:MEAS1:RESUlts:ALLAcqs:MEAN?"))
+        print(f"Result: {self.scope.query('MEASUrement:MEAS1:RESUlts:ALLAcqs:MIN?')}")
 
 
 
@@ -144,7 +144,7 @@ class Scope:
 
 
     def get_meas_1(self) -> float:
-        return self.scope.query("MEASUrement:MEAS1:RESUlts:ALLAcqs:MEAN?")
+        return f"Result: {self.scope.query('MEASUrement:MEAS1:RESUlts:ALLAcqs:MEAN?')}"
 
     def get_data(self) -> float:
         return self.scope.query_binary_values("CURVe?", datatype='d', container=np.array)
