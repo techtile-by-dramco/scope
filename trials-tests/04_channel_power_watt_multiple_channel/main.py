@@ -25,8 +25,13 @@ scope.query('*idn?')
 scope.write("CH1:TERMINATION 50")
 scope.write(f"CH1:BANDWIDTH {bandwidth}")
 
-scope.query(':CH1:TERMINATION?')
-scope.query(':CH1:BANdwidth?')
+# scope.query(':CH1:TERMINATION?')
+# scope.query(':CH1:BANdwidth?')
+
+# Channel 2 50Ohm 2GHz
+scope.write("CH2:TERMINATION 50")
+scope.write(f"CH2:BANDWIDTH {bandwidth}")
+
 
 # Open spectrum view
 # spectrum view 910MHz and 100kHz BW
@@ -42,15 +47,25 @@ scope.write("SV:CH1:UNIts DBM")
 
 scope.write("DATa:SOUrce CH1_SV_NORMal")
 
-scope.query("DATa:SOUrce?")
+# scope.query("DATa:SOUrce?")
 
-data_stop = round(span/rbw*2)
+# data_stop = round(span/rbw*2)
 
-scope.write("DATa:START 1")
-scope.write(f"DATa:STOP {data_stop}")
+# scope.write("DATa:START 1")
+# scope.write(f"DATa:STOP {data_stop}")
 
-scope.query("DATa:STARt?")
-scope.query("DATa:STOP?")
+# scope.query("DATa:STARt?")
+# scope.query("DATa:STOP?")
+
+# Channel 2
+scope.write("DISplay:SELect:SPECView1:SOUrce CH2")
+scope.write("CH2:SV:STATE ON")
+scope.write(f"CH2:SV:CENTERFrequency {center}")
+scope.write(f"SV:SPAN {span}")
+scope.write("SV:RBWMode MANUAL")
+scope.write(f"SV:RBW {rbw}")
+scope.write("SV:CH2:UNIts DBM")
+scope.write("DATa:SOUrce CH2_SV_NORMal")
 
 time.sleep(2)
 
@@ -64,6 +79,7 @@ print(scope.query("WFMOutpre:NR_Pt?"))
 
 time.sleep(1)
 
+# Measurement 1
 scope.write("MEASUREMENT:MEAS1:TYPE CPOWER")
 
 scope.write("MEASUREMENT:MEAS1:SOUrce CH1_SV_NORMal")
@@ -74,25 +90,30 @@ scope.write("MEASUREMENT:MEAS1:CPWIDTh 5E+3")
 
 print(scope.query("MEASUREMENT:MEAS1:CPWIDTh?"))
 
+
+# Measurement 2
+scope.write("MEASUREMENT:MEAS2:TYPE CPOWER")
+
+scope.write("MEASUREMENT:MEAS2:SOUrce CH2_SV_NORMal")
+
+print(scope.query("MEASUREMENT:MEASRange:STATE?"))
+
+scope.write("MEASUREMENT:MEAS2:CPWIDTh 5E+3")
+
+print(scope.query("MEASUREMENT:MEAS2:CPWIDTh?"))
+
+
 # time.sleep(0.1)
 scope.write("*WAI")
 
-# Proposed by Massimiliano Fiaschetti
-trial1 = scope.query("measurement:meas1:subgroup:results:currentacq:mean? 'channelpower'")
-print(f"Read Channel Power [W] - Trial 1: {trial1}")
-print(f"Read Channel Power [dBm] - Trial 1: {10 * np.log10(float(trial1)/1e-3)}")
-
-# Proposed by Massimiliano Fiaschetti
-trial2 = scope.query("measurement:meas1:subgroup:results:allacqs:mean? 'channelpower'")
-print(f"Read Channel Power [W] - Trial 2: {trial2}")
-print(f"Read Channel Power [dBm] - Trial 2: {10 * np.log10(float(trial2)/1e-3)}")
-
-print(f"Read Channel Power - Trial 3: {scope.query('MEASUrement:MEAS1:RESUlts:ALLAcqs:MIN?')}")
 
 
 while 1:
   time.sleep(1)
-  # Proposed by Massimiliano Fiaschetti
-  trial1 = scope.query("measurement:meas1:subgroup:results:currentacq:mean? 'channelpower'")
-  # print(f"Read Channel Power [W] - Trial 1: {trial1}")
-  print(f"Read Channel Power [dBm] - Trial 1: {10 * np.log10(float(trial1)/1e-3)}")
+  
+  # Read Meas 1
+  meas1 = scope.query("measurement:meas1:subgroup:results:currentacq:mean? 'channelpower'")
+  print(f"Read Channel Power [dBm] - MEAS 1: {10 * np.log10(float(meas1)/1e-3)}")
+
+  meas2 = scope.query("measurement:meas2:subgroup:results:currentacq:mean? 'channelpower'")
+  print(f"Read Channel Power [dBm] - MEAS 2: {10 * np.log10(float(meas2)/1e-3)}")
