@@ -95,7 +95,7 @@ class Scope:
         rbw = config.get("rbw_hz", 20)
         termination: int | None = config.get("termination", 50)
         spectrum_view: bool | None = config.get("spectrum_view", True)
-        channels: bool | None = config.get("channels", 1)
+        channels = config.get("channels", [1])
 
         rm = visa.ResourceManager()
         self.scope = rm.open_resource(self.visa_address)
