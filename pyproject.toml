@@ -30,4 +30,4 @@ Issues = "https://github.com/techtile-by-dramco/scope/issues"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-py-modules = ["TechtileScope", "TechtileScopeOld"]
+py-modules = ["TechtileScope"]
