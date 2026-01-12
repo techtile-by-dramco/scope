@@ -8,7 +8,7 @@ name = "techtile_scope"
 version = "0.0.1"
 authors = [
   { name="Gilles Callebaut"},
-  { name="Daan Delabie"},
+  { name="Jarne Van Mulders"},
 ]
 description = "Techtile Scope package"
 readme = "README.md"
@@ -27,3 +27,7 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/techtile-by-dramco/scope"
 Issues = "https://github.com/techtile-by-dramco/scope/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+py-modules = ["TechtileScope", "TechtileScopeOld"]

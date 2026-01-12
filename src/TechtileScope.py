@@ -1,4 +1,6 @@
 import time  # std module
+import logging
+import sys
 import pyvisa as visa  # http://github.com/hgrecco/pyvisa
 import numpy as np  # http://www.numpy.org/
 from scipy.signal import find_peaks
@@ -11,6 +13,12 @@ class ScopeMode(Enum):
     POWER = 1
 
 
+ANSI_RESET = "\x1b[0m"
+ANSI_CYAN = "\x1b[36m"
+ANSI_YELLOW = "\x1b[33m"
+ANSI_GREEN = "\x1b[32m"
+
+
 class Scope:
     """_summary_
 
@@ -20,12 +28,25 @@ class Scope:
     """
 
     def __init__(
-        self, ip: str = None, mode: ScopeMode = ScopeMode.POWER, config=None
+        self,
+        ip: str = None,
+        mode: ScopeMode = ScopeMode.POWER,
+        config=None,
+        logger: logging.Logger | None = None,
     ) -> None:
+        self.logger = logger or logging.getLogger(f"{__name__}.Scope")
+        if not self.logger.handlers:
+            handler = logging.StreamHandler(sys.stdout)
+            handler.setFormatter(
+                logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+            )
+            self.logger.addHandler(handler)
+            self.logger.setLevel(logging.DEBUG)
+        self.mode = mode
 
         if ip is None:
             if config is None or "ip" not in config:
-                print(
+                self.logger.error(
                     "Please provide or an IP address or a config with an IP address specified (key = ip)"
                 )
                 exit()
@@ -36,18 +57,30 @@ class Scope:
         self.span = None
 
         if config:
-            print(f"Setting with following config: {config}")
+            self.logger.info("Setting with following config: %s", config)
             self.setup(config)
         else:
-            print(
+            self.logger.warning(
                 "No configuration provided, please use the setup method to ocnfigure the scope."
             )
 
-    def write(self, s: str):
+    def scope_write(self, s: str):
+        self.logger.debug("%sSCPI write%s: %s", ANSI_CYAN, ANSI_RESET, s)
         self.scope.write(s)
 
+    def write(self, s: str):
+        self.scope_write(s)
+
+    def scope_query(self, s: str):
+        self.logger.debug("%sSCPI query%s: %s", ANSI_YELLOW, ANSI_RESET, s)
+        result = self.scope.query(s)
+        self.logger.debug(
+            "%sSCPI result%s: %s -> %s", ANSI_GREEN, ANSI_RESET, s, result
+        )
+        return result
+
     def query(self, s: str):
-        return self.scope.query(s)
+        return self.scope_query(s)
 
     def get_data(self) -> float:
         return self.scope.query_binary_values(
@@ -56,15 +89,13 @@ class Scope:
 
     def setup(self, config):
 
-        bandwidth=config["bandwidth_hz"]
-        center=config["center_hz"]
-        span=config["span_hz"]
-        rbw=config["rbw_hz"]
-        termination:int = config["termination"]
-        spectrum_view: bool = config["spectrum_view"]
-
-        self.span = span
-        self.rbw = rbw
+        bandwidth = config.get("bandwidth_hz", 2e9)
+        center = config.get("center_hz", 920e6)
+        span = config.get("span_hz", 100e3)
+        rbw = config.get("rbw_hz", 20)
+        termination: int | None = config.get("termination", 50)
+        spectrum_view: bool | None = config.get("spectrum_view", True)
+        channels: bool | None = config.get("channels", 1)
 
         rm = visa.ResourceManager()
         self.scope = rm.open_resource(self.visa_address)
@@ -72,146 +103,71 @@ class Scope:
         self.scope.encoding = "latin_1"
         self.scope.read_termination = "\n"
         self.scope.write_termination = None
-        self.scope.write("*cls")  # clear ESR
-        self.scope.write("*rst")  # reset
-        r = self.scope.query("*opc?")  # sync
+        self.scope_write("*cls")  # clear ESR
+        self.scope_write("*rst")  # reset
+        r = self.scope_query("*opc?")  # sync
 
-        self.scope.query("*idn?")
+        self.scope_query("*idn?")
 
         # Channel 1 50Ohm 2GHz
-        self.scope.write(f"CH1:TERMINATION {termination}")
-        self.scope.write(f"CH1:BANDWIDTH {bandwidth}")
-
-        # TODO check if all settings are stored correctly
-
-        self.scope.query(":CH1:TERMINATION?")
-        self.scope.query(":CH1:BANdwidth?")
+        if termination is not None:
+            self.scope_write(f"CH1:TERMINATION {termination}")
+        if bandwidth is not None:
+            self.scope_write(f"CH1:BANDWIDTH {bandwidth}")
 
         # Open spectrum view
         # spectrum view 910MHz and 100kHz BW
-        if spectrum_view:
-            self.scope.write("DISplay:SELect:SPECView1:SOUrce CH1")
-            self.scope.write("CH1:SV:STATE ON")
-            self.scope.write(f"CH1:SV:CENTERFrequency {center}")
-            self.scope.write(f"SV:SPAN {self.span}")
 
-            self.scope.write("SV:RBWMode MANUAL")
-            self.scope.write(f"SV:RBW {self.rbw}")
-
-            self.scope.write("SV:CH1:UNIts DBM")
-
-            self.scope.write("DATa:SOUrce CH1_SV_NORMal")
-
-        self.scope.query("DATa:SOUrce?")
-
-        data_stop = round(self.span / self.rbw * 2)
-
-        self.scope.write("DATa:START 1")
-        self.scope.write(f"DATa:STOP {data_stop}")
-
-        self.scope.query("DATa:STARt?")
-        self.scope.query("DATa:STOP?")
+        for c in channels:
+            self.scope_write(f"DISplay:SELect:SPECView1:SOUrce CH{c}")
+            self.scope_write(f"CH{c}:SV:STATE ON")
+            self.scope_write(f"CH{c}:SV:CENTERFrequency {center}")
+            self.scope_write(f"SV:SPAN {span}")
+            self.scope_write("SV:RBWMode MANUAL")
+            self.scope_write(f"SV:RBW {rbw}")
+            self.scope_write(f"SV:CH{c}:UNIts DBM")
+            self.scope_write(f"DATa:SOUrce CH{c}_SV_NORMal")
 
         time.sleep(2)
 
-        print(self.scope.query("WFMOutpre:SPAN?"))
-        self.scope.write("WFMOutpre:BYT_Or LSB")
+        self.logger.info("WFMOutpre:SPAN? -> %s", self.scope_query("WFMOutpre:SPAN?"))
+        self.scope_write("WFMOutpre:BYT_Or LSB")
 
-        self.scope.query("DATA:WIDTH?")
-        self.scope.query(":WFMOutpre?")
+        self.scope_query("DATA:WIDTH?")
+        self.scope_query(":WFMOutpre?")
 
-        print(self.scope.query("WFMOutpre:NR_Pt?"))
+        self.scope_query("WFMOutpre:NR_Pt?")
 
-    def calc_full_channel_power(self, data) -> float:
-        # pwr_lin = 10 ** (data / 10)
-        # tot_pwr_dbm = float(10*np.log10(np.sum(pwr_lin))) #float to cast to single element
-        # return tot_pwr_dbm + self.cable_loss
+        time.sleep(1)
 
-        # Convert dBm to Watts
-        power_samples_W = 10 ** (data / 10) * 1e-3  # Convert dBm to Watts
+        if self.mode == ScopeMode.POWER:
 
-        # Integrate power samples over the frequency band (each sample corresponds to the RBW)
-        total_power_W = np.sum(power_samples_W)
+            for c in channels:
+                self.scope_write(f"MEASUREMENT:MEAS{c}:TYPE CPOWER")
 
-        # Convert total power back to dBm
-        total_power_dBm = 10 * np.log10(total_power_W / 1e-3)
+                self.scope_write(f"MEASUREMENT:MEAS{c}:SOUrce CH{c}_SV_NORMal")
 
-        return total_power_dBm
+                self.logger.info(
+                    "MEASUREMENT:MEASRange:STATE? -> %s",
+                    self.scope_query("MEASUREMENT:MEASRange:STATE?"),
+                )
 
-        # print(f"Total channel power: {total_power_dBm:.2f} dBm")
+                self.scope_write(f"MEASUREMENT:MEAS{c}:CPWIDTh 5E+3")
 
-    def calc_channel_power_peaks(self, search_for_no_peaks) -> float:
+                self.logger.info(
+                    "MEASUREMENT:MEAS%d:CPWIDTh? -> %s",
+                    c,
+                    self.scope_query(f"MEASUREMENT:MEAS{c}:CPWIDTh?"),
+                )
 
-        #   Check span adjustments externally
-        self.check_span()
+        self.scope_write("*WAI")
 
-        #   Get spectrum form scope
-        pwr_dbm = self.scope.query_binary_values(
-            "CURVe?", datatype="d", container=np.array
-        )
+    def get_power_Watt(self, channels: list[int]=[1]) -> float:
+        vals = []
+        for c in channels:
+            val = float(self.scope_query(f"measurement:meas{c}:subgroup:results:currentacq:mean? 'channelpower'"))
+            vals.append(float(val))
+        return np.asarray(vals)
 
-        #   Calculate all peaks in spectrum
-        peaks, _ = find_peaks(pwr_dbm)
-        # print(pwr_dbm[peaks])
-
-        #   Sort peaks in descending order
-        peaks_sorted = sorted(pwr_dbm[peaks], reverse=True)
-        # print(peaks_sorted[:search_for_no_peaks])
-
-        #   Combine peaks to one overall power value
-        power_linear = 10 ** (np.asarray(peaks_sorted[:search_for_no_peaks]) / 10)
-        # print(power_linear)
-        tot_pwr_dbm = float(
-            10 * np.log10(np.sum(power_linear))
-        )  # float to cast to single element
-        return tot_pwr_dbm, peaks
-
-    def check_span(self):
-        new_span = float(self.query("SV:SPAN?"))
-        if new_span != self.span:
-
-            #   Warning
-            print("Span changed externally!")
-
-            #   Update span value
-            self.span = new_span
-
-            data_stop = round(self.span / self.rbw * 2)
-
-            self.write("DATa:START 1")
-            self.write(f"DATa:STOP {data_stop}")  # 1901
-
-    def get_power_dBm(self) -> float:
-        # pwr_data_dbm = self.get_data()
-        tot_pwr_dbm, _ = self.calc_channel_power_peaks(1)
-        return tot_pwr_dbm
-
-    def get_power_dBm_peaks(self, search_for_no_peaks, cable_loss=None) -> float:
-
-        #   Check span adjustments externally
-        self.check_span()
-
-        #   Get spectrum form scope
-        pwr_dbm = self.scope.query_binary_values(
-            "CURVe?", datatype="d", container=np.array
-        )
-
-        #   Calculate all peaks in spectrum
-        peaks, _ = find_peaks(pwr_dbm)
-        # print(pwr_dbm[peaks])
-
-        #   Sort peaks in descending order
-        peaks_sorted = sorted(pwr_dbm[peaks], reverse=True)
-        print(peaks_sorted[:search_for_no_peaks])
-
-        #   Combine peaks to one overall power value
-        power_linear = 10 ** (np.asarray(peaks_sorted[:search_for_no_peaks]) / 10)
-        # print(power_linear)
-        tot_pwr_dbm = float(
-            10 * np.log10(np.sum(power_linear))
-        )  # float to cast to single element
-        if cable_loss is None:
-            cable_loss = 0
-            print("no cabling loss taken into account")
-        return tot_pwr_dbm + cable_loss, peaks
-
+    def get_power_dBm(self, channels: list[int]=[1]) -> float:
+        return 10 * np.log10(self.get_power_Watt(channels) / 1e-3)
