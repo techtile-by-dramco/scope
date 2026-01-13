@@ -95,7 +95,9 @@ class Scope:
         rbw = config.get("rbw_hz", 20)
         termination: int | None = config.get("termination", 50)
         spectrum_view: bool | None = config.get("spectrum_view", True)
-        channels = config.get("channels", [1])
+        channels: bool | None = config.get("channels", [1])
+
+        self.channels = channels
 
         rm = visa.ResourceManager()
         self.scope = rm.open_resource(self.visa_address)
@@ -162,12 +164,16 @@ class Scope:
 
         self.scope_write("*WAI")
 
-    def get_power_Watt(self, channels: list[int]=[1]) -> float:
+    def get_power_Watt(self) -> float:
         vals = []
-        for c in channels:
-            val = float(self.scope_query(f"measurement:meas{c}:subgroup:results:currentacq:mean? 'channelpower'"))
+        for c in self.channels:
+            val = float(
+                self.scope_query(
+                    f"measurement:meas{c}:subgroup:results:currentacq:mean? 'channelpower'"
+                )
+            )
             vals.append(float(val))
         return np.asarray(vals)
 
-    def get_power_dBm(self, channels: list[int]=[1]) -> float:
-        return 10 * np.log10(self.get_power_Watt(channels) / 1e-3)
+    def get_power_dBm(self) -> float:
+        return 10 * np.log10(self.get_power_Watt() / 1e-3)
