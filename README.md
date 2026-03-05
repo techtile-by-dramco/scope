@@ -9,6 +9,18 @@ scope = Scope("192.108.0.251")
 power_dBm = scope.get_power_dBm()
 ```
 
+## Example config
+
+```yaml
+scope:
+  ip: "192.108.1.219"
+  channels: [1]
+  center_hz: 875e6
+  span_hz: 4e6
+  channel_power:
+    channel_width: 2e6
+```
+
 
 ## Installing package
 
