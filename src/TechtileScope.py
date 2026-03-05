@@ -96,6 +96,12 @@ class Scope:
         termination: int | None = config.get("termination", 50)
         spectrum_view: bool | None = config.get("spectrum_view", True)
         channels: bool | None = config.get("channels", [1])
+        channel_power_cfg = config.get("channel_power") or {}
+        channel_width = None
+        if isinstance(channel_power_cfg, dict):
+            channel_width = channel_power_cfg.get("channel_width")
+        if channel_width is None:
+            channel_width = config.get("channel_width", 5e3)
 
         self.channels = channels
 
@@ -154,7 +160,7 @@ class Scope:
                     self.scope_query("MEASUREMENT:MEASRange:STATE?"),
                 )
 
-                self.scope_write(f"MEASUREMENT:MEAS{c}:CPWIDTh 5E+3")
+                self.scope_write(f"MEASUREMENT:MEAS{c}:CPWIDTh {channel_width}")
 
                 self.logger.info(
                     "MEASUREMENT:MEAS%d:CPWIDTh? -> %s",
